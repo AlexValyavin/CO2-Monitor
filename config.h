@@ -1,0 +1,28 @@
+// config.h
+#ifndef CONFIG_H
+#define CONFIG_H
+
+#define WIFI_SSID "Wi-Fi"
+#define WIFI_PASS "yes%dnil"
+
+#define SCD41_ADDRESS 0x62
+#define OLED_ADDRESS 0x3C
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+#define OLED_RESET -1
+#define DEFAULT_TEMP_OFFSET 0.0
+#define DEFAULT_HUM_OFFSET 0.0
+#define DEFAULT_CO2_OFFSET 0
+
+// ThingSpeak по умолчанию выключен
+#define DEFAULT_USE_THINGSPEAK false
+#define DEFAULT_THINGSPEAK_API_KEY ""
+#define DEFAULT_THINGSPEAK_CHANNEL 0
+
+#define GOOGLE_SCRIPT_URL "https://script.google.com/macros/s/AKfycbznAbUX97y1xQ7t4DLuJj563oTrBV0wsrcl9O7k2d77oe7mK7GPJFTOG504_KXmWmvnww/exec"
+
+#define NTP_SERVER_IP "162.159.200.1"
+#define UTC_OFFSET_SECONDS 10800
+
+#endif
+
