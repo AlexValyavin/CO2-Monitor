@@ -138,7 +138,7 @@ void handleSaveSettings() {
   )rawliteral");
 }
 
-void handleRoot() {
+ void handleRoot() {
   String html = R"rawliteral(
 <!DOCTYPE html>
 <html>
@@ -149,13 +149,13 @@ void handleRoot() {
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body { font-family: Arial, sans-serif; padding: 15px; text-align: center; background: #f9f9f9; position: relative; }
-    .chart-container { width: 95%; margin: 20px auto; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .chart-container { width: 95%; margin: 20px auto; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); // ИЗМЕНЕНО: график скрыт по умолчанию
+      display: none; }
     .data-box { margin: 10px 0; padding: 10px; background: #e8f5e9; border-radius: 8px; font-size: 18px; }
     h2 { color: #2c3e50; margin-bottom: 5px; }
     button { margin: 10px 5px; padding: 10px 20px; font-size: 16px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer; }
     button:hover { background: #2980b9; }
     .footer { margin-top: 20px; font-size: 12px; color: #7f8c8d; }
-    
     /* Всплывающее меню */
     .settings-popup {
       display: none;
@@ -171,24 +171,18 @@ void handleRoot() {
       width: 90%;
       max-width: 500px;
     }
-
-    .settings-popup h3 {
-      margin-top: 0;
-    }
-
+    .settings-popup h3 { margin-top: 0; }
     .settings-popup input {
       width: 100%;
       padding: 8px;
       margin: 5px 0 15px 0;
       box-sizing: border-box;
     }
-
     .settings-popup button {
       padding: 10px 15px;
       margin: 5px;
       cursor: pointer;
     }
-
     .settings-overlay {
       display: none;
       position: fixed;
@@ -199,7 +193,6 @@ void handleRoot() {
       background: rgba(0,0,0,0.5);
       z-index: 999;
     }
-
     .settings-icon {
       position: absolute;
       top: 15px;
@@ -209,74 +202,127 @@ void handleRoot() {
       cursor: pointer;
       text-decoration: none;
     }
-    .settings-icon:hover {
-      color: #2980b9;
-    }
+    .settings-icon:hover { color: #2980b9; }
+    // НОВОЕ: стиль для кнопки переключения графика (синий, как другие кнопки)
+    #toggleChart { background: #3498db; }
+    #toggleChart:hover { background: #2980b9; }
   </style>
 </head>
 <body>
   <h2>🌿 CO₂ Monitor</h2>
   <!-- Шестерёнка -->
   <a class="settings-icon" onclick="openSettings()">⚙️</a>
-
   <!-- Оверлей -->
   <div class="settings-overlay" onclick="closeSettings()"></div>
-
   <!-- Всплывающее меню -->
   <div class="settings-popup" id="settingsPopup">
     <h3>⚙️ Настройки</h3>
-    
     <label>Температура (°C):</label>
-    <input type="number" step="0.1" id="tempOffset" value="0.0"><br>
-
+    <input type="number" step="0.1" id="tempOffset" value=")rawliteral" + String(tempOffset, 1) + R"rawliteral("><br>
     <label>Влажность (%):</label>
-    <input type="number" step="0.1" id="humOffset" value="-47.0"><br>
-
+    <input type="number" step="0.1" id="humOffset" value=")rawliteral" + String(humOffset, 1) + R"rawliteral("><br>
     <label>CO₂ (ppm):</label>
-    <input type="number" id="co2Offset" value="0"><br>
-
+    <input type="number" id="co2Offset" value=")rawliteral" + String(co2Offset) + R"rawliteral("><br>
     <label>Google Script URL:</label>
-    <input type="text" id="googleUrl" value="https://script.google.com/macros/s/..."><br><br>
-
+    <input type="text" id="googleUrl" value=")rawliteral" + googleScriptUrl + R"rawliteral("><br><br>
     <button onclick="saveSettingsAjax()">💾 Сохранить</button>
     <button onclick="closeSettings()">❌ Закрыть</button>
   </div>
-  
   <div class="data-box">
     CO₂: <b><span id="co2">--</span> ppm</b> |
     Temp: <b><span id="temp">--</span> °C</b> |
     Hum: <b><span id="hum">--</span> %</b>
   </div>
-
+  <button id="toggleChart">Показать график</button>
   <div class="chart-container">
     <canvas id="myChart"></canvas>
   </div>
-
   <button onclick="location.reload()">🔄 Обновить</button>
-
   <div class="footer">
     Данные сохраняются каждый час. Последнее обновление: <span id="lastUpdate"></span>
   </div>
-
   <script>
+    // НОВОЕ: глобальные переменные для графика и данных
+    let chart = null;
+    let chartData = { labels: [], co2: [], temp: [], hum: [] };
+    
+    // НОВОЕ: функция для создания графика
+    function createChart() {
+      const ctx = document.getElementById('myChart').getContext('2d');
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: chartData.labels,
+          datasets: [
+            {
+              label: 'CO₂ (ppm)',
+              data: chartData.co2,
+              borderColor: '#e74c3c',
+              tension: 0.2,
+              fill: false
+            },
+            {
+              label: 'Температура (°C)',
+              data: chartData.temp,
+              borderColor: '#3498db',
+              tension: 0.2,
+              fill: false,
+              yAxisID: 'y-temp'
+            },
+            {
+              label: 'Влажность (%)',
+              data: chartData.hum,
+              borderColor: '#2ecc71',
+              tension: 0.2,
+              fill: false,
+              yAxisID: 'y-hum'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: false,
+              title: { display: true, text: 'CO₂ (ppm)' }
+            },
+            yTemp: {
+              position: 'right',
+              beginAtZero: false,
+              title: { display: true, text: 'Темп (°C)' },
+              grid: { drawOnChartArea: false }
+            },
+            yHum: {
+              position: 'right',
+              beginAtZero: false,
+              title: { display: true, text: 'Влажн (%)' },
+              grid: { drawOnChartArea: false }
+            }
+          },
+          plugins: {
+            legend: { position: 'top' },
+            tooltip: { mode: 'index', intersect: false }
+          }
+        }
+      });
+    }
+    
     // Открыть меню
     function openSettings() {
-      // Загружаем текущие значения
       document.getElementById('tempOffset').value = ')rawliteral" + String(tempOffset, 1) + R"rawliteral(';
       document.getElementById('humOffset').value = ')rawliteral" + String(humOffset, 1) + R"rawliteral(';
       document.getElementById('co2Offset').value = ')rawliteral" + String(co2Offset) + R"rawliteral(';
       document.getElementById('googleUrl').value = ')rawliteral" + googleScriptUrl + R"rawliteral(';
-
       document.querySelector('.settings-overlay').style.display = 'block';
       document.getElementById('settingsPopup').style.display = 'block';
     }
-
+    
     // Закрыть меню
     function closeSettings() {
       document.querySelector('.settings-overlay').style.display = 'none';
       document.getElementById('settingsPopup').style.display = 'none';
     }
-
+    
     // Обновить текущие значения на странице
     function updateCurrentValues() {
       fetch('/json')
@@ -287,32 +333,22 @@ void handleRoot() {
           document.getElementById('hum').innerText = d.hum;
         });
     }
-
+    
     // Сохранить настройки через AJAX
     function saveSettingsAjax() {
       const temp = parseFloat(document.getElementById('tempOffset').value);
       const hum = parseFloat(document.getElementById('humOffset').value);
       const co2 = parseInt(document.getElementById('co2Offset').value);
       const url = document.getElementById('googleUrl').value;
-
-      // Отправляем настройки на устройство через AJAX
       fetch('/apply-settings', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          temp: temp,
-          hum: hum,
-          co2: co2,
-          url: url
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ temp: temp, hum: hum, co2: co2, url: url })
       })
       .then(response => {
         if (response.ok) {
           alert('✅ Настройки сохранены и применены!');
           closeSettings();
-          // Обновляем текущие значения на странице
           updateCurrentValues();
         } else {
           alert('❌ Ошибка применения настроек');
@@ -323,7 +359,7 @@ void handleRoot() {
         alert('❌ Ошибка сети');
       });
     }
-
+    
     // Получаем текущие значения с датчика
     fetch('/json')
       .then(r => r.json())
@@ -336,7 +372,7 @@ void handleRoot() {
       .catch(error => {
         console.error('Ошибка загрузки текущих данных:', error);
       });
-
+    
     // Загружаем исторические данные из Google Sheets
     fetch(')rawliteral" + String(googleScriptUrl) + R"rawliteral(')
       .then(response => {
@@ -350,82 +386,46 @@ void handleRoot() {
           document.querySelector('.chart-container').innerHTML = '<p>Нет данных для отображения. Подождите, пока пройдёт первый час.</p>';
           return;
         }
-
-        const labels = data.map(d => {
+        chartData.labels = data.map(d => {
           const dt = new Date(d.t.replace(' ', 'T'));
           if (isNaN(dt)) return d.t;
           const hours = String(dt.getHours()).padStart(2, '0');
           const mins = String(dt.getMinutes()).padStart(2, '0');
           return `${hours}:${mins}`;
         });
-
-        const ctx = document.getElementById('myChart').getContext('2d');
-        new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels: labels,
-            datasets: [
-              {
-                label: 'CO₂ (ppm)',
-                data: data.map(d => d.c),
-                borderColor: '#e74c3c',
-                tension: 0.2,
-                fill: false
-              },
-              {
-                label: 'Температура (°C)',
-                data: data.map(d => d.tmp),
-                borderColor: '#3498db',
-                tension: 0.2,
-                fill: false,
-                yAxisID: 'y-temp'
-              },
-              {
-                label: 'Влажность (%)',
-                data: data.map(d => d.h),
-                borderColor: '#2ecc71',
-                tension: 0.2,
-                fill: false,
-                yAxisID: 'y-hum'
-              }
-            ]
-          },
-          options: {
-            responsive: true,
-            scales: {
-              y: {
-                beginAtZero: false,
-                title: { display: true, text: 'CO₂ (ppm)' }
-              },
-              yTemp: {
-                position: 'right',
-                beginAtZero: false,
-                title: { display: true, text: 'Темп (°C)' },
-                grid: { drawOnChartArea: false }
-              },
-              yHum: {
-                position: 'right',
-                beginAtZero: false,
-                title: { display: true, text: 'Влажн (%)' },
-                grid: { drawOnChartArea: false }
-              }
-            },
-            plugins: {
-              legend: { position: 'top' },
-              tooltip: { mode: 'index', intersect: false }
-            }
-          }
-        });
+        chartData.co2 = data.map(d => d.c);
+        chartData.temp = data.map(d => d.tmp);
+        chartData.hum = data.map(d => d.h);
+        // НОВОЕ: не создаём график автоматически, ждём показа
       })
       .catch(error => {
         console.error('Ошибка загрузки данных из Google Sheets:', error);
         document.querySelector('.chart-container').innerHTML = '<p>Ошибка загрузки исторических данных</p>';
       });
+    
+    // НОВОЕ: Обработчик для кнопки скрытия/показа графика
+    document.getElementById('toggleChart').addEventListener('click', function() {
+      const container = document.querySelector('.chart-container');
+      const button = this;
+      if (container.style.display === 'none') {
+        container.style.display = 'block';
+        button.textContent = 'Скрыть график';
+        if (!chart && chartData.labels.length > 0) {
+          createChart(); // НОВОЕ: создаём график при показе
+        }
+      } else {
+        container.style.display = 'none';
+        button.textContent = 'Показать график';
+        if (chart) {
+          chart.destroy(); // НОВОЕ: уничтожаем график при скрытии
+          chart = null;
+        }
+      }
+    });
   </script>
 </body>
 </html>
 )rawliteral";
-
   server.send(200, "text/html", html);
 }
 
