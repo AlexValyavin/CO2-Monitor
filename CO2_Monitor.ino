@@ -7,61 +7,10 @@
 #include "display.h"
 #include "ntp.h"
 #include "web.h"
+#include "thingspeak.h" // Добавлено
 
-unsigned long lastSaveTime = 0;
-const unsigned long saveInterval = 3600000; // 1 час в мс
-const int maxRecords = 48; // Максимум 48 записей (2 дня)
-
-void saveSensorData() {
-  // Формируем новую запись
-  time_t currentTime = time(nullptr);
-  String newData = "{\"t\":\"" + String(ctime(&currentTime)).substring(0, 19) + "\",\"c\":" + String(co2) + ",\"tmp\":" + String(temperature, 1) + ",\"h\":" + String(humidity, 0) + "}";
-
-  // Читаем существующий файл
-  File file = SPIFFS.open("/data.json", "r");
-  String existingData;
-  if (file) {
-    existingData = file.readString();
-    file.close();
-  }
-
-  // Разбиваем на массив записей
-  String records[maxRecords];
-  int recordCount = 0;
-  int start = 0;
-  while (start < existingData.length() && recordCount < maxRecords) {
-    int end = existingData.indexOf('\n', start);
-    if (end == -1) end = existingData.length();
-    records[recordCount++] = existingData.substring(start, end);
-    start = end + 1;
-  }
-
-  // Если записей >= maxRecords, сдвигаем массив
-  if (recordCount >= maxRecords) {
-    for (int i = 0; i < recordCount - 1; i++) {
-      records[i] = records[i + 1];
-    }
-    recordCount--;
-  }
-
-  // Добавляем новую запись
-  records[recordCount] = newData;
-  recordCount++;
-
-  // Сохраняем обновлённый массив
-  file = SPIFFS.open("/data.json", "w");
-  if (file) {
-    for (int i = 0; i < recordCount; i++) {
-      if (records[i].length() > 0) {
-        file.println(records[i]);
-      }
-    }
-    file.close();
-    Serial.println("Saved sensor data: " + newData);
-  } else {
-    Serial.println("Failed to save sensor data");
-  }
-}
+unsigned long lastSendTime = 0;
+const unsigned long sendInterval = 15000; // 15 сек для ThingSpeak
 
 void setup() {
   Serial.begin(115200);
@@ -84,6 +33,7 @@ void setup() {
     }
   }
   startWebServer();
+  initThingSpeak(); // Добавлено
   Serial.println("✅ Web Server Started");
 }
 
@@ -94,9 +44,9 @@ void loop() {
   handleWebRequests();
 
   unsigned long currentTime = millis();
-  if (currentTime - lastSaveTime >= saveInterval) {
-    lastSaveTime = currentTime;
-    saveSensorData();
+  if (currentTime - lastSendTime >= sendInterval) {
+    lastSendTime = currentTime;
+    sendToThingSpeak(); // Добавлено
   }
 
   delay(5000);

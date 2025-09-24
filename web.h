@@ -2,16 +2,14 @@
 #ifndef WEB_H
 #define WEB_H
 
-#include <Arduino.h>
+#include <ESP8266WebServer.h>
 
 extern float tempOffset;
 extern float humOffset;
 extern int co2Offset;
-extern String googleScriptUrl;
-extern bool useGoogle;
 extern bool useThingSpeak;
 extern String thingSpeakApiKey;
-extern int thingSpeakChannel;
+extern unsigned long thingSpeakChannel;
 
 void startWebServer();
 void handleWebRequests();
